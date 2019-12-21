@@ -18,7 +18,6 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    QObject::connect(this, SIGNAL(chipUpdated()), this, SLOT(resizeBuffers()));
     //QObject::connect(this, SIGNAL(bufferUpdated()), this, SLOT(updateButtons()));
 
     updatePortsConnection = QObject::connect(&updatePortsTimer, SIGNAL(timeout()), this, SLOT(reload_ports()));
@@ -91,8 +90,12 @@ void MainWindow::openSerialPort(QString path)
             readData.append(serialPort->readAll());
             if (readData.indexOf("Arduino 27 Series programmer", 0) != -1){
                 log(QString("Connect successful"));
-
+                mArduino = new arduino(serialPort);
+                mArduino->selectChip(arduino::C256);
+                //mArduino->readChip();
+                chipSelected = true;
                 //QObject::connect(serialPort, SIGNAL(errorOccurred()), this, SLOT(closeSerialPort()));
+                QObject::connect(mArduino, SIGNAL(chipUpdated(uint32_t)), this, SLOT(resizeBuffers()));
 
                 chipSelectSetEnabled(true);
                 ui->updateButton->setEnabled(false);
@@ -198,97 +201,17 @@ void MainWindow::updateButtons(bool actions, bool buffer)
 
 void MainWindow::on_writeChipButton_clicked()
 {
-    writeData("w");
-    writeChip();
+    mArduino->writeChip(bufWork);
 }
-
-void MainWindow::writeData(const QByteArray &data)
-{
-    serialPort->write(data);
-}
-
-void MainWindow::writeChip()
-{
-    QByteArray data;
-    QByteArray readData;
-    log(QString("Writing %1 bytes to chip...").arg(bufSize));
-    ui->progressBar->setMaximum(bufSize);
-
-    data.clear();
-
-    // +1 нужен для записи последнего блока
-    for (uint32_t i = 0; i <= bufSize; i++){
-        ui->progressBar->setValue(i);
-        data.append(bufWork[i]);
-        if (i && ((i & 0xf) == 0)){
-            // 16 bytes block
-            writeData(data);
-            //qDebug("Send block 0x%04X-0x%04X\n", (i - 16), (i - 1));
-            data.clear();
-            readData = serialPort->readAll();
-            readData.clear();
-
-            if (bufSize == 2048){
-                // Correct time to 27C16
-                while (serialPort->waitForReadyRead(320)){
-                    readData.append(serialPort->readAll());
-                }
-            } else {
-                while (serialPort->waitForReadyRead(20)){
-                    readData.append(serialPort->readAll());
-                }
-            }
-            if (readData.indexOf("Complete block ") == -1){
-                log(QString("Writing error"));
-                return;
-            }
-        }
-    }
-    log(QString("Writing successful"));
-}
-
 
 void MainWindow::on_readChipButton_clicked()
 {
-    bufferClear = false;
-    bufCheck.fill(0);
-    readChip();
-    checkClearConnection = QObject::connect(this, SIGNAL(chipReaded()), this, SLOT(checkClear()));
-}
-
-void MainWindow::readChip()
-{
     updateButtons(false, false);
-    log(QString("Reading %1 bytes from chip...").arg(bufSize));
-
-    // clear serial buffer
-    QByteArray data = serialPort->readAll();
-
-    ui->progressBar->setMaximum(bufSize);
-    serialDataConnection = QObject::connect(serialPort, SIGNAL(readyRead()), this, SLOT(readData()));
-    writeData("r");
-}
-
-void MainWindow::readData()
-{
-    static uint32_t count = 0;
-    const QByteArray data = serialPort->readAll();
-    if (data.count()){
-        memcpy(&(bufWork.data())[count], data.data(), data.count());
-        count += data.count();
-    }
-    ui->progressBar->setValue(count);
-    if (count >= bufSize){
-        ui->progressBar->setValue(bufSize);
-        QObject::disconnect(serialDataConnection);
-        updateButtons(true, true);
-
-        log(QString("Readed %1 bytes.").arg(count));
-        count = 0;
-
-        emit chipReaded();
-        emit bufferUpdated();
-    }
+    ui->progressBar->setMaximum(mArduino->getChipSize());
+    log(QString("Reading %1 bytes from chip...").arg(mArduino->getChipSize()));
+    mArduino->readChip();
+    progressBarConnection = QObject::connect(mArduino, SIGNAL(blockComplete(uint32_t)), this, SLOT(chipOperationProgressBar(uint32_t)));
+    checkClearConnection = QObject::connect(mArduino, SIGNAL(readComplete(QByteArray)), this, SLOT(checkClear()));
 }
 
 void MainWindow::checkClear()
@@ -432,7 +355,7 @@ void MainWindow::showBuf()
     }
 }
 
-void MainWindow::resizeBuffers()
+void MainWindow::resizeBuffers(uint32_t size)
 {
     chipSelected = true;
 
@@ -451,63 +374,51 @@ void MainWindow::on_verifyChipButton_clicked()
 {
     // Backup work buffer
     bufCheck = bufWork;
-    readChip();
-    verifyDataConnection = QObject::connect(this, SIGNAL(chipReaded()), this, SLOT(verifyData()));
+    mArduino->readChip();
+    verifyDataConnection = QObject::connect(mArduino, SIGNAL(readComplete()), this, SLOT(verifyData()));
 }
 
 
 void MainWindow::on_c16Button_clicked()
 {
     log("Select 27C16 chip");
-    bufSize = 0x07ff + 1;
-    writeData("a");
-    emit chipUpdated();
+    mArduino->selectChip(arduino::C16);
 }
 
 void MainWindow::on_c32Button_clicked()
 {
     log("Select 27C32 chip");
-    bufSize = 0x0fff + 1;
-    writeData("b");
-    emit chipUpdated();
+    mArduino->selectChip(arduino::C32);
 }
 
 void MainWindow::on_c64Button_clicked()
 {
     log("Select 27C64 chip");
-    bufSize = 0x1fff + 1;
-    writeData("c");
-    emit chipUpdated();
+    mArduino->selectChip(arduino::C64);
 }
 
 void MainWindow::on_c128Button_clicked()
 {
     log("Select 27C128 chip");
-    bufSize = 0x3fff + 1;
-    writeData("d");
-    emit chipUpdated();
+    mArduino->selectChip(arduino::C128);
 }
 
 void MainWindow::on_c256Button_clicked()
 {
     log("Select 27C256 chip");
-    bufSize = 0x7fff + 1;
-    writeData("e");
-    emit chipUpdated();
+    mArduino->selectChip(arduino::C256);
 }
 
 void MainWindow::on_c512Button_clicked()
 {
     log("Select 27C512 chip");
-    bufSize = 0xffff + 1;
-    writeData("f");
-    emit chipUpdated();
+    mArduino->selectChip(arduino::C512);
 }
 
 
 void MainWindow::showVoltage()
 {    
-    writeData("v");
+    //writeData("v");
     QByteArray readData = serialPort->readAll();
     QString str = "Programming voltage: ";
     int8_t pos;
@@ -544,6 +455,11 @@ void MainWindow::on_voltageChipButton_toggled(bool checked)
         ui->progressBar->setValue(0);
         updateButtons(true, chipSelected);
     }
+}
+
+void MainWindow::chipOperationProgressBar(uint32_t value)
+{
+    ui->progressBar->setValue(value);
 }
 
 void MainWindow::on_progressBar_valueChanged(int value)

@@ -1,6 +1,8 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "arduino.h"
+
 #include <QMainWindow>
 #include <QSerialPort>
 #include <QListWidgetItem>
@@ -26,9 +28,6 @@ signals:
   void chipUpdated();
 
 private slots:
-
-    void readData();
-
     void showBuf();
 
     void on_openFileButton_clicked();
@@ -57,7 +56,7 @@ private slots:
 
     void on_c512Button_clicked();
 
-    void resizeBuffers();
+    void resizeBuffers(uint32_t size);
 
     void on_connectButton_clicked();
 
@@ -79,14 +78,18 @@ private slots:
 
     void on_progressBar_valueChanged(int value);
 
+    void chipOperationProgressBar(uint32_t value);
+
 private:
     Ui::MainWindow *ui;
     QSerialPort *serialPort = NULL;
+    arduino *mArduino = NULL;
 
     QTimer updatePortsTimer;
     QTimer updateVoltageTimer;
     QMetaObject::Connection updatePortsConnection;
 
+    QMetaObject::Connection progressBarConnection;
     QMetaObject::Connection serialDataConnection;
     QMetaObject::Connection verifyDataConnection;
     QMetaObject::Connection checkClearConnection;
@@ -102,15 +105,9 @@ private:
 
     void log(QString str);
 
-    void readChip();
-
     void openSerialPort(QString path);
 
     void closeSerialPort();
-
-    void writeData(const QByteArray &data);
-
-    void writeChip();
 
     void chipSelectSetEnabled (bool state);
 };

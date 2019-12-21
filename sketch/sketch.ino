@@ -1,3 +1,5 @@
+#define TRUE 1
+#define FALSE 0
 
 /* 74HC595 control (address lines) */
 #define shiftLatchPin A1
@@ -63,10 +65,16 @@ void select_chip (chipType new_chip);
 
 chipType chip = NONE;
 Modes mode = WAIT;
+uint8_t log_enable = FALSE;
 uint16_t start_address = 0x0000;
 uint16_t end_address = 0x0000;
 #define BUF_LEN 16
 uint8_t buf[BUF_LEN];
+
+void message(const char* mes){
+	if (log_enable)
+		Serial.println(mes);
+}
 
 void setup() {
   // 74HC595 (*2)
@@ -105,9 +113,7 @@ void loop() {
         mode = WAIT;
         break;
       }
-#ifdef MESSAGES
-      Serial.println("Read mode.");
-#endif
+      message("Read mode.");
       read_mode();
       if (chip == C16) digitalWrite(readVoltageEnable, LOW);
       digitalWrite(chipEnable, LOW);
@@ -115,7 +121,7 @@ void loop() {
       for (uint16_t i = start_address; i <= end_address; i++) {
         uint8_t data = read_byte(i);
         Serial.write(&data, sizeof(data));
-        if (i == end_address) break;
+        if (i == end_address) break; // Защита от переполнения uint16
       }
       digitalWrite(outputEnable, HIGH);
       digitalWrite(chipEnable, HIGH);
@@ -127,11 +133,7 @@ void loop() {
         mode = WAIT;
         break;
       }
-#ifdef MESSAGES
-      Serial.print("n");
-#endif
-      write_mode();
-      program_voltage_set(true);
+      message("Write mode");
       /*for (int i = start_address; i <= end_address; i++) {
         Serial.println(i, HEX);
         write_byte(i, 0x89);
@@ -139,7 +141,7 @@ void loop() {
       for (uint16_t i = start_address; i <= end_address; i += BUF_LEN) {
         Serial.print("Write block ");
         Serial.println(i);
-        uint8_t count = Serial.readBytes(buf, BUF_LEN);
+        uint8_t count = Serial.readBytes((char*)buf, BUF_LEN);
         if (count != BUF_LEN) {
           Serial.print("Error on block");
           Serial.println(i);
@@ -148,16 +150,32 @@ void loop() {
           break;
         }
         for (uint16_t j = 0; j < BUF_LEN; j++) {
+					// Write byte
+					write_mode();
+					program_voltage_set(true);
           write_byte((i + j), buf[j]);
+					program_voltage_set(false);
+
+					// Verify byte
+					read_mode();
+					if (chip == C16) digitalWrite(readVoltageEnable, LOW);
+					digitalWrite(chipEnable, LOW);
+					digitalWrite(outputEnable, LOW);
+					uint8_t verify = get_data();
+					digitalWrite(outputEnable, HIGH);
+					digitalWrite(chipEnable, HIGH);
+					if (chip == C16) digitalWrite(readVoltageEnable, HIGH);
+					if (buf[j] != virify){
+						Serial.print("Error on address ");
+						Serial.println(i + j);
+						mode = WAIT;
+					}
         }
         Serial.print("Complete block ");
         Serial.println(i);
         if (i == end_address) break;
       }
-      program_voltage_set(false);
-#ifdef MESSAGES
-      Serial.println("Write success.");
-#endif
+      message("Write success.");
       mode = WAIT;
       break;
     case VOLTAGE:
@@ -166,10 +184,8 @@ void loop() {
       mode = WAIT;
       break;
     default:
-#ifdef MESSAGES
-      if (chip == NONE) Serial.println("Chip not selected!");
-      Serial.println("Wait commands...");
-#endif
+      if (chip == NONE) message("Chip not selected!");
+      message("Wait commands...");
       while (Serial.available()) Serial.read();
       do {} while (Serial.available() == 0);
       char incomingByte = Serial.read();
@@ -195,52 +211,38 @@ void select_chip (chipType new_chip) {
       digitalWrite(powerEnable, LOW);
       chip = new_chip;
       end_address = 0x07ff;
-#ifdef MESSAGES
-      Serial.println("Select 27C16 chip.");
-#endif
+			message("Select 27C16 chip.");
       break;
     case C32:
       digitalWrite(powerEnable, LOW);
       chip = new_chip;
       end_address = 0x0fff;
-#ifdef MESSAGES
-      Serial.println("Select 27C32 chip.");
-#endif
+			message("Select 27C32 chip.");
       break;
     case C64:
       chip = new_chip;
       end_address = 0x1fff;
-#ifdef MESSAGES
-      Serial.println("Select 27C64 chip.");
-#endif
+			message("Select 27C64 chip.");
       break;
     case C128:
       chip = new_chip;
       end_address = 0x3fff;
-#ifdef MESSAGES
-      Serial.println("Select 27C128 chip.");
-#endif
+			message("Select 27C128 chip.");
       break;
     case C256:
       chip = new_chip;
       end_address = 0x7fff;
-#ifdef MESSAGES
-      Serial.println("Select 27C256 chip.");
-#endif
+			message("Select 27C256 chip.");
       break;
     case C512:
       chip = C512;
       end_address = 0xffff;
-#ifdef MESSAGES
-      Serial.println("Select 27C512 chip.");
-#endif
+			message("Select 27C512 chip.");
       break;
     default:
       chip = NONE;
       end_address = 0x0000;
-#ifdef MESSAGES
-      Serial.println("Chip not selected!");
-#endif
+			message("Chip not selected!");
   }
 }
 
