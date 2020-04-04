@@ -165,7 +165,7 @@ void loop() {
 					digitalWrite(outputEnable, HIGH);
 					digitalWrite(chipEnable, HIGH);
 					if (chip == C16) digitalWrite(readVoltageEnable, HIGH);
-					if (buf[j] != virify){
+					if (buf[j] != verify){
 						Serial.print("Error on address ");
 						Serial.println(i + j);
 						mode = WAIT;
