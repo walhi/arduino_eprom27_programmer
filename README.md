@@ -1,5 +1,7 @@
 # Programmer for EPROM 27 series (16-512) based on Arduino
 
+*You can download the stable version on the "Releases" tab. It guarantees a working version of the source code, compiled by the GUI for Windows and a sketch for arduino.*
+
 Compatible Chips List (not all chips are tested):
 
  * 27C16 (connects from 3 to 26 leg DIP28 socket)
@@ -18,6 +20,8 @@ Based on the project: https://github.com/bouletmarc/BMBurner
 ![Schematic](https://github.com/walhi/arduino_eprom27_programmer/blob/master/imgs/sch.png)
 
 PCB divorced using autotracer. Not yet tested, but the prototype is working properly.
+
+*Resistors R1 and R2 are indicated in the Arduino firmware. By default, the values are 10 kOhm and 1.5 kOhm.*
 
 # Software
 
