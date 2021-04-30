@@ -19,11 +19,11 @@
 
 Принципиальная схема
 
-![Schematic](https://github.com/walhi/arduino_eprom27_programmer/blob/master/imgs/sch.png)
+![Schematic](https://github.com/Radionews/arduino_eprom27_programmer/blob/master/imgs/sch.png)
 
 Внешний вид
 
-![PCB](https://github.com/walhi/arduino_eprom27_programmer/blob/master/imgs/pcb.png)
+![PCB](https://github.com/Radionews/arduino_eprom27_programmer/blob/master/imgs/pcb.png)
 
 Файлы для производства платы ледат в папке gerber. Исходники проекта доступны тут: <https://oshwlab.com/naym1993/walhi_eeprom_prog>
 
@@ -39,8 +39,8 @@
  * Верификация и проверка чипа на запись (no bits to be set to 1)
  * Контроль напряжения программирования (for AVR in TQFP case)
 
-![GUI on Windows 10](https://github.com/walhi/arduino_eprom27_programmer/blob/master/imgs/win.png)
+![GUI on Windows 10](https://github.com/Radionews/arduino_eprom27_programmer/blob/master/imgs/win.png)
 
 Приложение требует Windows 7 и выше.
 
-![GUI on Ubuntu Mate](https://github.com/walhi/arduino_eprom27_programmer/blob/master/imgs/ubuntu_mate.png)
+![GUI on Ubuntu Mate](https://github.com/Radionews/arduino_eprom27_programmer/blob/master/imgs/ubuntu_mate.png)
