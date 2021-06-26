@@ -1,8 +1,4 @@
-/* 74HC595 control (address lines) */
-#define shiftLatchPin 10
-#define shiftClockPin 13
-#define shiftDataPin 11
-#define addressPinA10 12
+#include <SPI.h>
 
 /* Data pins */
 #define dataB0 2
@@ -26,7 +22,7 @@
 /* Voltage control (for programming chips) */
 #define voltageControl A7
 #define rTop 100000.0
-#define rBottom 8900.0
+#define rBottom 5100.0
 
 //#define MESSAGES
 
@@ -66,14 +62,14 @@ uint16_t start_address = 0x0000;
 uint16_t end_address = 0x0000;
 #define BUF_LEN 16
 uint8_t buf[BUF_LEN];
+byte registerTwo,registerOne;
 
 void setup() {
+  
   // 74HC595 (*2)
-  pinMode(shiftLatchPin, OUTPUT);
-  pinMode(shiftClockPin, OUTPUT);
-  pinMode(shiftDataPin, OUTPUT);
-  pinMode(addressPinA10, OUTPUT);
-
+  SPI.begin();
+  pinMode(PIN_SPI_SS, OUTPUT); 
+  
   // Chip control
   pinMode(chipEnable, OUTPUT);
   pinMode(outputEnable, OUTPUT);
@@ -92,7 +88,9 @@ void setup() {
 
   // Data pins
   read_mode();
-
+  
+  analogReference(EXTERNAL);
+  
   Serial.begin(115200);
   Serial.println("Arduino 27 Series programmer");
 }
@@ -310,12 +308,12 @@ uint16_t gen_address (uint16_t address) {
 
 void set_address (uint16_t address) {
   address = gen_address(address);
-  digitalWrite(shiftLatchPin, LOW);
-  byte registerTwo = highByte(address);
-  byte registerOne = lowByte(address);
-  shiftOut(shiftDataPin, shiftClockPin, MSBFIRST, registerTwo);
-  shiftOut(shiftDataPin, shiftClockPin, MSBFIRST, registerOne);
-  digitalWrite(shiftLatchPin, HIGH);
+  digitalWrite(PIN_SPI_SS, LOW); // выбор регистра сдвига
+  registerTwo = highByte(address);
+  registerOne = lowByte(address);
+  SPI.transfer(registerTwo);
+  SPI.transfer(registerOne);
+  digitalWrite(PIN_SPI_SS, HIGH); // конец передачи
 }
 
 uint8_t get_data (void) {
@@ -370,7 +368,7 @@ void write_byte (uint16_t address, uint8_t data) {
 }
 
 float get_voltage (void) {
-  float vADC = (analogRead(voltageControl) / 1024.) * 5.;
-  float current = vADC / rBottom;
-  return (current * (rTop + rBottom));
+  float vADC = (analogRead(voltageControl) / 1024.) * 3.3;
+  float current = vADC / (2*rBottom);
+  return (current * (rTop + (2*rBottom)));
 }
