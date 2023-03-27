@@ -167,7 +167,7 @@ void MainWindow::reload_ports()
     for (const QSerialPortInfo &info : infos) {
         QListWidgetItem *item = new QListWidgetItem(info.portName(), ui->portList);
         item->setData(Qt::UserRole, info.systemLocation());
-        if (info.isBusy()){
+        if (info.isNull()){
             item->setText(info.portName() + " (Busy)");
             item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
         }
@@ -420,7 +420,7 @@ void MainWindow::showVoltage()
 {    
     //writeData("v");
     QByteArray readData = serialPort->readAll();
-    QString str = "Programming voltage: ";
+    QByteArrayView str = "Programming voltage: ";
     int8_t pos;
     while (serialPort->waitForReadyRead(80)){
         readData.append(serialPort->readAll());
@@ -467,7 +467,7 @@ void MainWindow::on_progressBar_valueChanged(int value)
     if (updateVoltageConnection){
          double i = value/10.0;
          QString text;
-         text.sprintf("%02.1f", i);
+         text = QString::asprintf("%02.1f", i);
          ui->progressBar->setFormat(text + QString(" V"));
     }
 }
